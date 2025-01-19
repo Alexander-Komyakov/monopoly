@@ -193,46 +193,69 @@ class SSD1306_SPI(SSD1306):
         self.cs(1)
         
         
-
-i2c = SoftI2C(sda=Pin(0), scl=Pin(1))
-oled_width = 128
-oled_height = 64
-oled = SSD1306_I2C(oled_width, oled_height, i2c)
-
-rfid_reader = MFRC522(spi_id=0,sck=6,miso=4,mosi=7,cs=5,rst=22)
-
-
-# Define GPIO pins for rows
-row_pins = [Pin(13),Pin(12),Pin(11),Pin(10)]
-# Define GPIO pins for columns
-column_pins = [Pin(9),Pin(8),Pin(3),Pin(2)]
-
-# Define keypad layout
-keys = [
-    ['1', '2', '3', 'A'],
-    ['4', '5', '6', 'B'],
-    ['7', '8', '9', 'C'],
-    ['*', '0', '#', 'D']]
-
-keypad = Keypad(row_pins, column_pins, keys)
-
-def keypad_thread():
-    while True:
-        key_pressed = keypad.read_keypad()
-        if key_pressed:
-            print("Key pressed:", key_pressed)
-        time.sleep(0.3)  # debounce and delay
+class Game:
+    def __init__(self):
+        self.players = [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
         
-_thread.start_new_thread(keypad_thread, ())        
-while True:
+        # Oled
+        self.i2c = SoftI2C(sda=Pin(0), scl=Pin(1))
+        self.oled_width = 128
+        self.oled_height = 64
+        self.oled = SSD1306_I2C(self.oled_width, self.oled_height, self.i2c)
 
-    rfid_reader.init()
-    (card_status, tag_type) = rfid_reader.request(rfid_reader.REQIDL)
-    if card_status == rfid_reader.OK:
-        (card_status, card_id) = rfid_reader.SelectTagSN()
-        if card_status == rfid_reader.OK:
-            rfid_card = int.from_bytes(bytes(card_id),"little",False)
-            #print("Detected Card : "+ str(rfid_card))
-            oled.write_text(str(rfid_card), 10, 0, 1)    
-    oled.show()
-    oled.fill(0)
+        # RFID
+        self.rfid_reader = MFRC522(spi_id=0,sck=6,miso=4,mosi=7,cs=5,rst=22)
+
+        # Keypad
+        # Define GPIO pins for rows
+        self.row_pins = [Pin(13),Pin(12),Pin(11),Pin(10)]
+        # Define GPIO pins for columns
+        self.column_pins = [Pin(9),Pin(8),Pin(3),Pin(2)]
+        # Define keypad layout
+        self.keys = [
+            ['1', '2', '3', 'A'],
+            ['4', '5', '6', 'B'],
+            ['7', '8', '9', 'C'],
+            ['*', '0', '#', 'D']]
+
+        self.keypad = Keypad(self.row_pins, self.column_pins, self.keys)
+        
+        self.rfid_reader.init()
+
+        
+    def keypad_thread(self):
+        state = False
+        save_time = time.time()
+        while True:
+            if save_time + 10 < time.time():
+                return 0
+            key_pressed = self.keypad.read_keypad()
+            if (key_pressed != None) and (state == False):
+                print("Key pressed:", key_pressed)
+                state = True
+            elif key_pressed == None:
+                state = False
+
+    def run_game(self):
+        _thread.start_new_thread(self.keypad_thread, ())
+        self.show_score_all()
+        while True:
+            (card_status, tag_type) = self.rfid_reader.request(self.rfid_reader.REQIDL)
+            if card_status == self.rfid_reader.OK:
+                (card_status, card_id) = self.rfid_reader.SelectTagSN()
+                if card_status == self.rfid_reader.OK:
+                    rfid_card = int.from_bytes(bytes(card_id),"little",False)
+                    #print("Detected Card : "+ str(rfid_card))
+                    #self.oled.fill(0)
+                    #self.oled.write_text(str(rfid_card), 10, 0, 1)    
+                    #self.oled.show()
+    def show_score_all(self):
+        self.oled.fill(0)
+        for i in range(0, 8):
+            self.oled.write_text(f"{i+1}: {self.players[i]}", 0, i*8, 1)
+        #for i in range(0, 3):
+            #self.oled.write_text(f"{i+8}: {self.players[i+8]}", 30, i*10, 1)
+        self.oled.show()
+
+game = Game()
+game.run_game()
