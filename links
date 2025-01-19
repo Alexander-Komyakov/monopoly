@@ -1,0 +1,19 @@
+_thread:
+    https://www.electrosoftcloud.com/en/multithreaded-script-on-raspberry-pi-pico-and-micropython/
+
+mfrc522-rfid:
+    https://diyprojectslab.com/mfrc522-rfid-module-with-raspberry-pi-pico/
+
+rp pico:
+    https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-python-sdk.pdf
+
+micropython:
+    https://github.com/micropython/micropython
+
+ide: thonny
+
+keypad:
+    https://github.com/PerfecXX/MicroPython-SimpleKeypad
+
+oled:
+    https://habr.com/ru/companies/selectel/articles/544776/
