@@ -195,7 +195,11 @@ class SSD1306_SPI(SSD1306):
         
 class Game:
     def __init__(self):
-        self.players = [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+        self.players = [99000, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+        self.players_rfid = {"3308833859": 0, "619441987": 1, "34": 2, "43": 3, "53": 4, "35": 5, "22": 6, "12": 7}
+        
+        self.state_game = "" # "" "plus1" "plus2"
+        self.number = ""
         
         # Oled
         self.i2c = SoftI2C(sda=Pin(0), scl=Pin(1))
@@ -227,11 +231,32 @@ class Game:
         state = False
         save_time = time.time()
         while True:
-            if save_time + 10 < time.time():
+            if save_time + 99 < time.time():
                 return 0
             key_pressed = self.keypad.read_keypad()
             if (key_pressed != None) and (state == False):
-                print("Key pressed:", key_pressed)
+                if key_pressed == "C":
+                    self.show_score_all()
+                    self.state_game = ""
+                    self.number = ""
+                if key_pressed == "*": #plus
+                    self.state_game = "plus1"
+                    self.show_plus(self.number)
+                if key_pressed in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
+                    if self.state_game == "plus1" and len(self.number) < 5:
+                        self.number = self.number + key_pressed
+                        self.show_plus(self.number)
+                if key_pressed == "A":
+                    if self.state_game == "plus1":
+                        if self.number != "":
+                            self.state_game = "plus2"
+                            self.number = self.number + "A"
+                            self.show_plus(self.number)
+                        else:
+                            self.show_score_all()
+                            self.state_game = ""
+                            self.number = ""
+                    
                 state = True
             elif key_pressed == None:
                 state = False
@@ -244,17 +269,36 @@ class Game:
             if card_status == self.rfid_reader.OK:
                 (card_status, card_id) = self.rfid_reader.SelectTagSN()
                 if card_status == self.rfid_reader.OK:
-                    rfid_card = int.from_bytes(bytes(card_id),"little",False)
+                    rfid_card = str(int.from_bytes(bytes(card_id),"little",False))
+                    if rfid_card in self.players_rfid.keys():
+                        player_id = self.players_rfid[rfid_card]
+                        if self.state_game == "plus2":
+                            self.players[player_id] = self.players[player_id] + int(self.number[:-1])
+                            self.state_game = ""
+                            self.number = ""
+                        self.show_score_one(player_id)
                     #print("Detected Card : "+ str(rfid_card))
                     #self.oled.fill(0)
                     #self.oled.write_text(str(rfid_card), 10, 0, 1)    
                     #self.oled.show()
+    
     def show_score_all(self):
         self.oled.fill(0)
         for i in range(0, 8):
             self.oled.write_text(f"{i+1}: {self.players[i]}", 0, i*8, 1)
-        #for i in range(0, 3):
-            #self.oled.write_text(f"{i+8}: {self.players[i+8]}", 30, i*10, 1)
+        self.oled.show()
+    
+    def show_score_one(self, player):
+        self.oled.fill(0)
+        if self.players[player] > 99999:
+            self.oled.write_text(f"{self.players[player]}", 0, 24, 2)
+        else:    
+            self.oled.write_text(f"{self.players[player]}", 0, 24, 3)
+        self.oled.show()
+    
+    def show_plus(self, number):
+        self.oled.fill(0)
+        self.oled.write_text(f"+{number}", 0, 26, 2)
         self.oled.show()
 
 game = Game()
