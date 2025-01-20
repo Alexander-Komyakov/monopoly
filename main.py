@@ -3,6 +3,7 @@ import framebuf
 from machine import Pin, SoftI2C, SPI
 import time
 import utime
+import os
 from mfrc522 import MFRC522
 from keypad import Keypad
 import _thread
@@ -198,6 +199,8 @@ class Game:
         self.players = [99000, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
         self.players_rfid = {"3308833859": 0, "619441987": 1, "34": 2, "43": 3, "53": 4, "35": 5, "22": 6, "12": 7}
         
+        self.load_from_file()
+        
         self.state_game = "" # "" "plus1" "plus2" "minus1" "minus2" "trade1" "trade2" "trade3" "trade4"
         self.number = ""
         
@@ -226,7 +229,28 @@ class Game:
         
         self.rfid_reader.init()
 
-        
+    def load_from_file(self):
+        try:
+            with open('save.txt', 'r') as f:
+                for i in range(0, 8):
+                    self.players[i] = int((f.readline())[:-1])
+        except:
+            with open('save.txt', 'w') as f:
+                f.write('1500\n')
+            for i in range(0, 8):
+                with open('save.txt', 'a') as f:
+                    f.write('1500\n')
+                self.players[i] = 1500
+            with open('save.txt', 'a') as f:
+                f.write('1500\n')
+    
+    def save_to_file(self):
+        with open('save.txt', 'w') as f:
+            f.write(f"{self.players[0]}\n")
+        for i in range(1, 8):
+            with open('save.txt', 'a') as f:
+                f.write(f"{self.players[i]}\n")
+                
     def keypad_thread(self):
         state = False
         while True:
@@ -292,6 +316,13 @@ class Game:
                             self.state_game = "trade2"
                             self.number = self.number + "A"
                             self.show_trade(self.number)
+                            #restore game
+                            if self.number == "99123A":
+                                self.players = [1500]*8
+                                self.save_to_file()
+                                self.number = ""
+                                self.state_game = ""
+                                self.show_score_all()
                         else:
                             self.show_score_all()
                             self.state_game = ""
@@ -314,12 +345,14 @@ class Game:
                         player_id = self.players_rfid[rfid_card]
                         if self.state_game == "plus2":
                             self.players[player_id] = self.players[player_id] + int(self.number[:-1])
+                            self.save_to_file()
                             self.state_game = ""
                             self.number = ""
                             self.show_score_one(player_id)
                         elif self.state_game == "minus2":
                             if (self.players[player_id] - int(self.number[:-1])) >= 0:
                                 self.players[player_id] = self.players[player_id] - int(self.number[:-1])
+                                self.save_to_file()
                                 self.state_game = ""
                                 self.number = ""
                                 self.show_score_one(player_id)
@@ -339,6 +372,7 @@ class Game:
                         elif self.state_game == "trade3":
                             self.players[self.save_player_id_trade] = self.players[self.save_player_id_trade] - int(self.number[:-1])
                             self.players[player_id] = self.players[player_id] + int(self.number[:-1])
+                            self.save_to_file()
                             self.state_game = ""
                             self.number = ""
                             self.show_score_one(player_id)
