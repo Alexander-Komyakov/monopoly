@@ -198,7 +198,7 @@ class Game:
         self.players = [99000, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
         self.players_rfid = {"3308833859": 0, "619441987": 1, "34": 2, "43": 3, "53": 4, "35": 5, "22": 6, "12": 7}
         
-        self.state_game = "" # "" "plus1" "plus2"
+        self.state_game = "" # "" "plus1" "plus2" "minus1" "minus2" "trade1" "trade2" "trade3" "trade4"
         self.number = ""
         
         # Oled
@@ -229,29 +229,69 @@ class Game:
         
     def keypad_thread(self):
         state = False
-        save_time = time.time()
         while True:
-            if save_time + 99 < time.time():
-                return 0
             key_pressed = self.keypad.read_keypad()
             if (key_pressed != None) and (state == False):
-                if key_pressed == "C":
+                if key_pressed == "D": #trade
+                    if self.state_game == "trade1" and len(self.number) > 1:
+                        self.number = self.number[:-1]
+                        self.show_trade(self.number)
+                    if self.state_game == "minus1" and len(self.number) > 1:
+                        self.number = self.number[:-1]
+                        self.show_minus(self.number)
+                    if self.state_game == "plus1" and len(self.number) > 1:
+                        self.number = self.number[:-1]
+                        self.show_plus(self.number)
+                if key_pressed == "B": #trade
+                    self.number = ""
+                    self.state_game = "trade1"
+                    self.show_trade(self.number)
+                if key_pressed == "C": #break
                     self.show_score_all()
                     self.state_game = ""
                     self.number = ""
+                if key_pressed == "#": #minus
+                    self.number = ""
+                    self.state_game = "minus1"
+                    self.show_minus(self.number)
                 if key_pressed == "*": #plus
+                    self.number = ""
                     self.state_game = "plus1"
                     self.show_plus(self.number)
                 if key_pressed in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
                     if self.state_game == "plus1" and len(self.number) < 5:
                         self.number = self.number + key_pressed
                         self.show_plus(self.number)
-                if key_pressed == "A":
+                    if self.state_game == "minus1" and len(self.number) < 5:
+                        self.number = self.number + key_pressed
+                        self.show_minus(self.number)
+                    if self.state_game == "trade1" and len(self.number) < 5:
+                        self.number = self.number + key_pressed
+                        self.show_trade(self.number)
+                if key_pressed == "A": #approve
                     if self.state_game == "plus1":
                         if self.number != "":
                             self.state_game = "plus2"
                             self.number = self.number + "A"
                             self.show_plus(self.number)
+                        else:
+                            self.show_score_all()
+                            self.state_game = ""
+                            self.number = ""
+                    if self.state_game == "minus1":
+                        if self.number != "":
+                            self.state_game = "minus2"
+                            self.number = self.number + "A"
+                            self.show_minus(self.number)
+                        else:
+                            self.show_score_all()
+                            self.state_game = ""
+                            self.number = ""
+                    if self.state_game == "trade1":
+                        if self.number != "":
+                            self.state_game = "trade2"
+                            self.number = self.number + "A"
+                            self.show_trade(self.number)
                         else:
                             self.show_score_all()
                             self.state_game = ""
@@ -276,11 +316,36 @@ class Game:
                             self.players[player_id] = self.players[player_id] + int(self.number[:-1])
                             self.state_game = ""
                             self.number = ""
-                        self.show_score_one(player_id)
-                    #print("Detected Card : "+ str(rfid_card))
-                    #self.oled.fill(0)
-                    #self.oled.write_text(str(rfid_card), 10, 0, 1)    
-                    #self.oled.show()
+                            self.show_score_one(player_id)
+                        elif self.state_game == "minus2":
+                            if (self.players[player_id] - int(self.number[:-1])) >= 0:
+                                self.players[player_id] = self.players[player_id] - int(self.number[:-1])
+                                self.state_game = ""
+                                self.number = ""
+                                self.show_score_one(player_id)
+                            else:
+                                self.show_not_enough(self.players[player_id] - int(self.number[:-1]))
+                                self.state_game = ""
+                                self.number = ""
+                        elif self.state_game == "trade2":
+                            if (self.players[player_id] - int(self.number[:-1])) >= 0:
+                                self.save_player_id_trade = player_id
+                                self.show_score_one_number((self.players[player_id] - int(self.number[:-1])))
+                                self.state_game = "trade3"
+                            else:
+                                self.show_not_enough(self.players[player_id] - int(self.number[:-1]))
+                                self.state_game = ""
+                                self.number = ""
+                        elif self.state_game == "trade3":
+                            self.players[self.save_player_id_trade] = self.players[self.save_player_id_trade] - int(self.number[:-1])
+                            self.players[player_id] = self.players[player_id] + int(self.number[:-1])
+                            self.state_game = ""
+                            self.number = ""
+                            self.show_score_one(player_id)
+                            self.save_player_id_trade = -1
+                        else:
+                            self.show_score_one(player_id)
+
     
     def show_score_all(self):
         self.oled.fill(0)
@@ -295,10 +360,36 @@ class Game:
         else:    
             self.oled.write_text(f"{self.players[player]}", 0, 24, 3)
         self.oled.show()
+        
+    def show_score_one_number(self, number):
+        self.oled.fill(0)
+        if number > 99999:
+            self.oled.write_text(str(number), 0, 24, 2)
+        else:    
+            self.oled.write_text(str(number), 0, 24, 3)
+        self.oled.show()
+    
+    def show_trade(self, number):
+        self.oled.fill(0)
+        self.oled.write_text(f"T{number}", 0, 26, 2)
+        self.oled.show()
     
     def show_plus(self, number):
         self.oled.fill(0)
         self.oled.write_text(f"+{number}", 0, 26, 2)
+        self.oled.show()
+    
+    def show_minus(self, number):
+        self.oled.fill(0)
+        self.oled.write_text(f"-{number}", 0, 26, 2)
+        self.oled.show()
+    
+    def show_not_enough(self, number):
+        self.oled.fill(0)
+        if int(self.number[:-1]) > 9999:
+            self.oled.write_text(f"NO {number}", 0, 26, 1)
+        else:
+            self.oled.write_text(f"NO {number}", 0, 26, 2)
         self.oled.show()
 
 game = Game()
