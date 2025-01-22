@@ -196,8 +196,8 @@ class SSD1306_SPI(SSD1306):
         
 class Game:
     def __init__(self):
-        self.players = [99000, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
-        self.players_rfid = {"3308833859": 0, "619441987": 1, "34": 2, "43": 3, "53": 4, "35": 5, "22": 6, "12": 7}
+        self.players = [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+        self.players_rfid = {"36046426852801053": 0, "36046426852800797": 1, "36046426852800541": 2, "36046426852800285": 3, "36046426852800029": 4, "36046426852799773": 5, "36046426852799517": 6, "36046426852799261": 7}
         
         self.load_from_file()
         
@@ -257,13 +257,13 @@ class Game:
             key_pressed = self.keypad.read_keypad()
             if (key_pressed != None) and (state == False):
                 if key_pressed == "D": #trade
-                    if self.state_game == "trade1" and len(self.number) > 1:
+                    if self.state_game == "trade1" and len(self.number) > 0:
                         self.number = self.number[:-1]
                         self.show_trade(self.number)
-                    if self.state_game == "minus1" and len(self.number) > 1:
+                    if self.state_game == "minus1" and len(self.number) > 0:
                         self.number = self.number[:-1]
                         self.show_minus(self.number)
-                    if self.state_game == "plus1" and len(self.number) > 1:
+                    if self.state_game == "plus1" and len(self.number) > 0:
                         self.number = self.number[:-1]
                         self.show_plus(self.number)
                 if key_pressed == "B": #trade
